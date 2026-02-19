@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spools prog sem juntas</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f6f7f9}
+    .wrap{max-width:1200px;margin:16px auto;background:#fff;border-radius:10px;padding:14px;box-shadow:0 6px 22px rgba(0,0,0,.08)}
+    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    h2{margin:0;font-size:18px}
+    input{padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;min-width:260px}
+    .meta{color:#667085;font-size:12px}
+    .tableWrap{margin-top:12px;overflow:auto;border:1px solid #eaecf0;border-radius:10px}
+    table{border-collapse:collapse;width:100%;min-width:900px}
+    thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid #eaecf0}
+    th,td{padding:10px 12px;border-bottom:1px solid #f0f2f5;text-align:left;white-space:nowrap}
+    tr:hover td{background:#fcfcfd}
+    .loading{padding:14px;color:#475467}
+    .error{padding:14px;color:#b42318}
+    .btn{padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h2>Spools prog sem juntas</h2>
+        <div class="meta" id="meta">Carregando…</div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="q" placeholder="Filtrar (digite para buscar)" />
+        <button class="btn" id="reload">Recarregar</button>
+      </div>
+    </div>
+
+    <div class="tableWrap" id="box">
+      <div class="loading">Buscando dados…</div>
+    </div>
+  </div>
+
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
+
+  const box = document.getElementById("box");
+  const meta = document.getElementById("meta");
+  const q = document.getElementById("q");
+  const reloadBtn = document.getElementById("reload");
+
+  let headers = [];
+  let rows = [];
+
+  function esc(s){
+    return String(s ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;");
+  }
+
+  function renderTable(dataRows){
+    const thead = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>`;
+    const tbody = `<tbody>${
+      dataRows.map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")
+    }</tbody>`;
+
+    box.innerHTML = `<table>${thead}${tbody}</table>`;
+    meta.textContent = `${dataRows.length} linhas exibidas • ${rows.length} total`;
+  }
+
+  function applyFilter(){
+    const term = q.value.trim().toLowerCase();
+    if(!term){
+      renderTable(rows);
+      return;
+    }
+    const filtered = rows.filter(r => r.join(" ").toLowerCase().includes(term));
+    renderTable(filtered);
+  }
+
+  async function load(){
+    box.innerHTML = `<div class="loading">Buscando dados…</div>`;
+    meta.textContent = "Carregando…";
+
+    try{
+      const url = WEB_APP_URL + "?t=" + Date.now();
+      const res = await fetch(url, { cache: "no-store" });
+
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); }
+      catch {
+        throw new Error("O endpoint não retornou JSON.");
+      }
+
+      if(!data.ok) throw new Error(data.error || "Falha ao ler planilha");
+
+      headers = data.headers || [];
+      rows = data.rows || [];
+
+      if(headers.length === 0){
+        box.innerHTML = `<div class="error">Planilha sem cabeçalho.</div>`;
+        meta.textContent = "";
+        return;
+      }
+
+      renderTable(rows);
+    }catch(err){
+      box.innerHTML = `<div class="error">Erro: ${esc(err.message || err)}</div>`;
+      meta.textContent = "";
+      console.error(err);
+    }
+  }
+
+  q.addEventListener("input", applyFilter);
+  reloadBtn.addEventListener("click", load);
+
+  load();
+</script>
+</body>
+</html>
