@@ -12,6 +12,7 @@
     .meta{color:#667085;font-size:12px;margin-top:4px}
     input{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;min-width:260px}
     .btn{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
     .tableWrap{margin-top:12px;overflow:auto;border:1px solid #eaecf0;border-radius:12px}
     table{border-collapse:collapse;width:100%;min-width:900px}
     thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid #eaecf0;z-index:1}
@@ -19,6 +20,11 @@
     tr:hover td{background:#fcfcfd}
     .loading{padding:14px;color:#475467}
     .error{padding:14px;color:#b42318}
+    .footer{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:10px}
+    .pager{display:flex;gap:8px;align-items:center}
+    select{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff}
+    .muted{color:#98a2b3}
+    .pill{display:inline-block;padding:2px 8px;border:1px solid #eaecf0;border-radius:999px;font-size:12px;color:#667085}
   </style>
 </head>
 <body>
@@ -38,21 +44,54 @@
     <div class="tableWrap" id="box">
       <div class="loading">Buscando dados…</div>
     </div>
+
+    <div class="footer">
+      <div class="meta" id="meta2"></div>
+
+      <div class="pager">
+        <label class="meta">Linhas por página:</label>
+        <select id="pageSize">
+          <option>25</option>
+          <option selected>50</option>
+          <option>100</option>
+          <option>200</option>
+        </select>
+
+        <button class="btn" id="prev">◀</button>
+        <div class="meta" id="pageInfo">Página 1</div>
+        <button class="btn" id="next">▶</button>
+      </div>
+    </div>
+
+    <div class="meta muted" style="margin-top:8px">
+      Endpoint: <span class="pill" id="endpointPill">—</span>
+    </div>
   </div>
 
 <script>
-  // ✅ Seu Web App (Apps Script)
-  // IMPORTANTE: o Apps Script precisa ter doGet() e suportar JSONP (?callback=...)
-  const WEB_APP_URL =
-       "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
+  // ✅ COLE AQUI a URL /exec do seu Apps Script (a mais recente do Deploy)
+  // Exemplo: https://script.google.com/macros/s/XXXXX/exec
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
 
   const box = document.getElementById("box");
   const meta = document.getElementById("meta");
+  const meta2 = document.getElementById("meta2");
   const q = document.getElementById("q");
   const reloadBtn = document.getElementById("reload");
+  const pageSizeSel = document.getElementById("pageSize");
+  const prevBtn = document.getElementById("prev");
+  const nextBtn = document.getElementById("next");
+  const pageInfo = document.getElementById("pageInfo");
+  const endpointPill = document.getElementById("endpointPill");
+  endpointPill.textContent = WEB_APP_URL;
 
   let headers = [];
   let rows = [];
+  let filtered = [];
+  let page = 1;
+
+  let lastScript = null;
+  let timeoutHandle = null;
 
   function esc(s){
     return String(s ?? "")
@@ -62,69 +101,105 @@
       .replaceAll('"',"&quot;");
   }
 
+  function setLoading(msg){
+    box.innerHTML = `<div class="loading">${esc(msg)}</div>`;
+    meta.textContent = "Carregando…";
+    meta2.textContent = "";
+  }
+
+  function setError(msg){
+    box.innerHTML = `<div class="error">Erro: ${esc(msg)}</div>`;
+    meta.textContent = "";
+    meta2.textContent = "";
+  }
+
+  function getPageSize(){
+    return parseInt(pageSizeSel.value, 10) || 50;
+  }
+
+  function paginate(data){
+    const size = getPageSize();
+    const total = data.length;
+    const totalPages = Math.max(1, Math.ceil(total / size));
+    page = Math.min(page, totalPages);
+    page = Math.max(page, 1);
+    const start = (page - 1) * size;
+    const end = start + size;
+    return { slice: data.slice(start, end), total, totalPages };
+  }
+
   function renderTable(dataRows){
     const thead = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>`;
     const tbody = `<tbody>${
       dataRows.map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")
     }</tbody>`;
     box.innerHTML = `<table>${thead}${tbody}</table>`;
-    meta.textContent = `${dataRows.length} linhas exibidas • ${rows.length} total`;
   }
 
-  function applyFilter(){
+  function refreshView(){
     const term = q.value.trim().toLowerCase();
-    if(!term){
-      renderTable(rows);
-      return;
-    }
-    const filtered = rows.filter(r => r.join(" ").toLowerCase().includes(term));
-    renderTable(filtered);
-  }
+    filtered = !term ? rows.slice() : rows.filter(r => r.join(" ").toLowerCase().includes(term));
 
-  // ---------- JSONP ----------
-  let lastScript = null;
+    const pg = paginate(filtered);
+    renderTable(pg.slice);
+
+    meta.textContent = `${pg.total} registros ${term ? "(filtrados)" : "(total)"}`;
+    meta2.textContent = `Página ${page} de ${pg.totalPages} • Nesta página: ${pg.slice.length}`;
+
+    pageInfo.textContent = `Página ${page} / ${pg.totalPages}`;
+    prevBtn.disabled = (page <= 1);
+    nextBtn.disabled = (page >= pg.totalPages);
+  }
 
   function load(){
-    box.innerHTML = `<div class="loading">Buscando dados…</div>`;
-    meta.textContent = "Carregando…";
+    setLoading("Buscando dados…");
 
-    // remove script anterior
-    if (lastScript) lastScript.remove();
+    if (lastScript) { try { lastScript.remove(); } catch(e){} }
+    if (timeoutHandle) clearTimeout(timeoutHandle);
 
-    // callback global
     window.handleData = function(data){
       try{
-        if(!data || !data.ok) throw new Error((data && data.error) || "Falha ao carregar");
-
-        headers = data.headers || [];
-        rows = data.rows || [];
-
-        if(headers.length === 0){
-          box.innerHTML = `<div class="error">Sem cabeçalho para exibir.</div>`;
-          meta.textContent = "";
-          return;
+        if(!data || data.ok !== true){
+          throw new Error((data && data.error) ? data.error : "Resposta inválida do endpoint");
         }
 
+        headers = (data.headers || []).map(h => String(h ?? "").trim());
+        rows = (data.rows || []).map(r => Array.isArray(r) ? r : []);
+
+        if(headers.length === 0){
+          throw new Error("Sem cabeçalho (headers) para exibir.");
+        }
+
+        page = 1;
         q.value = "";
-        renderTable(rows);
+        refreshView();
       }catch(err){
-        box.innerHTML = `<div class="error">Erro: ${esc(err.message || err)}</div>`;
-        meta.textContent = "";
+        setError(err.message || String(err));
+        console.error(err);
       }
     };
 
     const s = document.createElement("script");
-    s.src = WEB_APP_URL + (WEB_APP_URL.includes("?") ? "&" : "?") + "callback=handleData&t=" + Date.now();
+    const sep = WEB_APP_URL.includes("?") ? "&" : "?";
+    s.src = WEB_APP_URL + sep + "callback=handleData&t=" + Date.now();
+
     s.onerror = () => {
-      box.innerHTML = `<div class="error">Erro: não foi possível carregar o endpoint (verifique se o Apps Script aceita callback=...)</div>`;
-      meta.textContent = "";
+      setError("Não foi possível carregar o endpoint. Verifique se o Web App está 'Qualquer pessoa' e se o doGet suporta callback= (JSONP).");
     };
+
     document.body.appendChild(s);
     lastScript = s;
+
+    timeoutHandle = setTimeout(() => {
+      setError("Tempo esgotado ao carregar o endpoint. Verifique a implantação do Apps Script.");
+    }, 15000);
   }
 
-  q.addEventListener("input", applyFilter);
+  q.addEventListener("input", () => { page = 1; refreshView(); });
   reloadBtn.addEventListener("click", load);
+  pageSizeSel.addEventListener("change", () => { page = 1; refreshView(); });
+  prevBtn.addEventListener("click", () => { page--; refreshView(); });
+  nextBtn.addEventListener("click", () => { page++; refreshView(); });
 
   load();
 </script>
