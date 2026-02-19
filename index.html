@@ -1,20 +1,14 @@
 <script>
-  // CHAMANDO DIRETO O APPS SCRIPT
-  const WEB_APP_URL =
-    "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
+  const WEB_APP_URL = "SUA_URL_DO_EXEC_AQUI";
 
-  async function load(){
-    try{
-      const res = await fetch(WEB_APP_URL + "?t=" + Date.now(), {
-        method: "GET",
-        mode: "cors"
-      });
+  function handleData(data){
+    console.log(data); // aqui você segue com renderização da tabela
+  }
 
-      const data = await res.json();
-      console.log(data);
-    }catch(err){
-      console.error(err);
-    }
+  function load(){
+    const s = document.createElement("script");
+    s.src = WEB_APP_URL + "?callback=handleData&t=" + Date.now();
+    document.body.appendChild(s);
   }
 
   load();
