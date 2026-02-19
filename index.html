@@ -1,268 +1,169 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Spools prog sem juntas</title>
-  <style>
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f6f7f9}
-    .wrap{max-width:1200px;margin:16px auto;background:#fff;border-radius:12px;padding:14px;box-shadow:0 6px 22px rgba(0,0,0,.08)}
-    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    h2{margin:0;font-size:18px}
-    .meta{color:#667085;font-size:12px;margin-top:4px}
-    input{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;min-width:260px}
-    .btn{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;cursor:pointer}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .tableWrap{margin-top:12px;overflow:auto;border:1px solid #eaecf0;border-radius:12px}
-    table{border-collapse:collapse;width:100%;min-width:900px}
-    thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid #eaecf0;z-index:1}
-    th,td{padding:10px 12px;border-bottom:1px solid #f0f2f5;text-align:left;white-space:nowrap}
-    tr:hover td{background:#fcfcfd}
-    .loading{padding:14px;color:#475467}
-    .error{padding:14px;color:#b42318}
-    .footer{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:10px}
-    .pager{display:flex;gap:8px;align-items:center}
-    select{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff}
-    .muted{color:#98a2b3}
-    .pill{display:inline-block;padding:2px 8px;border:1px solid #eaecf0;border-radius:999px;font-size:12px;color:#667085;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Spools prog sem juntas</title>
+<style>
+body{font-family:Arial;margin:0;background:#f6f7f9}
+.wrap{max-width:1200px;margin:16px auto;background:#fff;border-radius:12px;padding:14px;box-shadow:0 6px 22px rgba(0,0,0,.08)}
+.top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+h2{margin:0;font-size:18px}
+.meta{color:#667085;font-size:12px;margin-top:4px}
+input{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;min-width:260px}
+.btn{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;cursor:pointer}
+.tableWrap{margin-top:12px;overflow:auto;border:1px solid #eaecf0;border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:900px}
+thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid #eaecf0}
+th,td{padding:10px 12px;border-bottom:1px solid #f0f2f5;text-align:left;white-space:nowrap}
+tr:hover td{background:#fcfcfd}
+.loading{padding:14px;color:#475467}
+.error{padding:14px;color:#b42318}
+.footer{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:10px}
+.pager{display:flex;gap:8px;align-items:center}
+select{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div>
-        <h2>Spools prog sem juntas</h2>
-        <div class="meta" id="meta">Carregando…</div>
-      </div>
+<div class="wrap">
+<div class="top">
+<div>
+<h2>Spools prog sem juntas</h2>
+<div class="meta" id="meta">Carregando…</div>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+<input id="q" placeholder="Filtrar (SERVIÇO, PROG FAB, MATERIAL...)"/>
+<button class="btn" id="reload">Recarregar</button>
+</div>
+</div>
 
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input id="q" placeholder="Filtrar (SERVIÇO, PROG FAB, MATERIAL...)" />
-        <button class="btn" id="reload">Recarregar</button>
-      </div>
-    </div>
+<div class="tableWrap" id="box">
+<div class="loading">Buscando dados…</div>
+</div>
 
-    <div class="tableWrap" id="box">
-      <div class="loading">Buscando dados…</div>
-    </div>
-
-    <div class="footer">
-      <div class="meta" id="meta2"></div>
-
-      <div class="pager">
-        <label class="meta">Linhas por página:</label>
-        <select id="pageSize">
-          <option>25</option>
-          <option selected>50</option>
-          <option>100</option>
-          <option>200</option>
-        </select>
-
-        <button class="btn" id="prev">◀</button>
-        <div class="meta" id="pageInfo">Página 1</div>
-        <button class="btn" id="next">▶</button>
-      </div>
-    </div>
-
-    <div class="meta muted" style="margin-top:8px">
-      Endpoint: <span class="pill" id="endpointPill">—</span>
-    </div>
-  </div>
+<div class="footer">
+<div class="meta" id="meta2"></div>
+<div class="pager">
+<label class="meta">Linhas por página:</label>
+<select id="pageSize">
+<option>25</option>
+<option selected>50</option>
+<option>100</option>
+<option>200</option>
+</select>
+<button class="btn" id="prev">◀</button>
+<div class="meta" id="pageInfo">Página 1</div>
+<button class="btn" id="next">▶</button>
+</div>
+</div>
+</div>
 
 <script>
-  // ✅ URL do seu Web App (Apps Script) - JSONP (callback=)
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
 
-  const box = document.getElementById("box");
-  const meta = document.getElementById("meta");
-  const meta2 = document.getElementById("meta2");
-  const q = document.getElementById("q");
-  const reloadBtn = document.getElementById("reload");
-  const pageSizeSel = document.getElementById("pageSize");
-  const prevBtn = document.getElementById("prev");
-  const nextBtn = document.getElementById("next");
-  const pageInfo = document.getElementById("pageInfo");
-  const endpointPill = document.getElementById("endpointPill");
-  endpointPill.textContent = WEB_APP_URL;
+const box = document.getElementById("box");
+const meta = document.getElementById("meta");
+const meta2 = document.getElementById("meta2");
+const q = document.getElementById("q");
+const reloadBtn = document.getElementById("reload");
+const pageSizeSel = document.getElementById("pageSize");
+const prevBtn = document.getElementById("prev");
+const nextBtn = document.getElementById("next");
+const pageInfo = document.getElementById("pageInfo");
 
-  let headers = [];
-  let rows = [];
-  let filtered = [];
-  let page = 1;
+let headers = [];
+let rows = [];
+let filtered = [];
+let page = 1;
 
-  // Controle de requisições (evita corrida/timeout falso)
-  let active = { scriptEl: null, timeout: null, cbName: null, token: 0 };
+function esc(s){
+return String(s ?? "")
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;");
+}
 
-  function esc(s){
-    return String(s ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;");
-  }
+function fmtCell(v){
+const s = String(v ?? "");
+const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+return s;
+}
 
-  // Formata ISO (ex: 2025-09-15T03:00:00.000Z) -> dd/mm/aaaa
-  function fmtCell(v){
-    const s = String(v ?? "");
-    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
-    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
-    return s;
-  }
+function getPageSize(){
+return parseInt(pageSizeSel.value, 10) || 50;
+}
 
-  function setLoading(msg){
-    box.innerHTML = `<div class="loading">${esc(msg)}</div>`;
-    meta.textContent = "Carregando…";
-    meta2.textContent = "";
-  }
+function paginate(data){
+const size = getPageSize();
+const total = data.length;
+const totalPages = Math.max(1, Math.ceil(total / size));
+page = Math.min(page, totalPages);
+page = Math.max(page, 1);
+const start = (page - 1) * size;
+const end = start + size;
+return { slice: data.slice(start, end), total, totalPages };
+}
 
-  function setError(msg){
-    box.innerHTML = `<div class="error">Erro: ${esc(msg)}</div>`;
-    meta.textContent = "";
-    meta2.textContent = "";
-  }
+function renderTable(dataRows){
+const thead = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>`;
+const tbody = `<tbody>${
+dataRows.map(r => `<tr>${r.map(v => `<td>${esc(fmtCell(v))}</td>`).join("")}</tr>`).join("")
+}</tbody>`;
+box.innerHTML = `<table>${thead}${tbody}</table>`;
+}
 
-  function getPageSize(){
-    return parseInt(pageSizeSel.value, 10) || 50;
-  }
+function sortByQtdSpools(data){
+const idx = headers.findIndex(h => h.toUpperCase().includes("QTD"));
+if(idx === -1) return data;
+return data.sort((a,b)=>{
+const av = parseFloat(a[idx]) || 0;
+const bv = parseFloat(b[idx]) || 0;
+return bv - av; // maior primeiro
+});
+}
 
-  function paginate(data){
-    const size = getPageSize();
-    const total = data.length;
-    const totalPages = Math.max(1, Math.ceil(total / size));
-    page = Math.min(page, totalPages);
-    page = Math.max(page, 1);
-    const start = (page - 1) * size;
-    const end = start + size;
-    return { slice: data.slice(start, end), total, totalPages };
-  }
+function refreshView(){
+const term = q.value.trim().toLowerCase();
+filtered = !term ? rows.slice() : rows.filter(r => r.join(" ").toLowerCase().includes(term));
 
-  function renderTable(dataRows){
-    const thead = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>`;
-    const tbody = `<tbody>${
-      dataRows.map(r => `<tr>${r.map(v => `<td>${esc(fmtCell(v))}</td>`).join("")}</tr>`).join("")
-    }</tbody>`;
-    box.innerHTML = `<table>${thead}${tbody}</table>`;
-  }
+filtered = sortByQtdSpools(filtered);
 
-  function refreshView(){
-    const term = q.value.trim().toLowerCase();
-    filtered = !term ? rows.slice() : rows.filter(r => r.join(" ").toLowerCase().includes(term));
+const pg = paginate(filtered);
+renderTable(pg.slice);
 
-    const pg = paginate(filtered);
-    renderTable(pg.slice);
+meta.textContent = `${pg.total} registros`;
+meta2.textContent = `Página ${page} de ${pg.totalPages}`;
+pageInfo.textContent = `Página ${page} / ${pg.totalPages}`;
+}
 
-    meta.textContent = `${pg.total} registros ${term ? "(filtrados)" : "(total)"}`;
-    meta2.textContent = `Página ${page} de ${pg.totalPages} • Nesta página: ${pg.slice.length}`;
+function load(){
+box.innerHTML = '<div class="loading">Buscando dados…</div>';
 
-    pageInfo.textContent = `Página ${page} / ${pg.totalPages}`;
-    prevBtn.disabled = (page <= 1);
-    nextBtn.disabled = (page >= pg.totalPages);
-  }
+window.handleData = function(data){
+if(!data || data.ok !== true){
+box.innerHTML = '<div class="error">Erro ao carregar dados</div>';
+return;
+}
+headers = data.headers;
+rows = data.rows;
+page = 1;
+refreshView();
+};
 
-  function cleanupActive(){
-    if (active.timeout) { clearTimeout(active.timeout); active.timeout = null; }
-    if (active.scriptEl) { try { active.scriptEl.remove(); } catch(e){} active.scriptEl = null; }
-    if (active.cbName && window[active.cbName]) {
-      try { delete window[active.cbName]; } catch(e) { window[active.cbName] = undefined; }
-    }
-    active.cbName = null;
-  }
+const s = document.createElement("script");
+s.src = WEB_APP_URL + "?callback=handleData&t=" + Date.now();
+document.body.appendChild(s);
+}
 
-  function setLoadingUI(isLoading){
-    reloadBtn.disabled = isLoading;
-    q.disabled = isLoading;
-    pageSizeSel.disabled = isLoading;
-    prevBtn.disabled = isLoading || page <= 1;
-    nextBtn.disabled = isLoading;
-  }
+q.addEventListener("input", ()=>{ page=1; refreshView(); });
+reloadBtn.addEventListener("click", load);
+pageSizeSel.addEventListener("change", ()=>{ page=1; refreshView(); });
+prevBtn.addEventListener("click", ()=>{ page--; refreshView(); });
+nextBtn.addEventListener("click", ()=>{ page++; refreshView(); });
 
-  function load(attempt = 1){
-    active.token++;
-    const token = active.token;
-
-    setLoading("Buscando dados…");
-    setLoadingUI(true);
-
-    // cancela qualquer request anterior
-    cleanupActive();
-
-    // callback único por request (evita corrida)
-    const cbName = "handleData_" + Date.now() + "_" + Math.floor(Math.random()*1e6);
-    active.cbName = cbName;
-
-    window[cbName] = function(data){
-      // ignora callbacks antigos
-      if (token !== active.token) return;
-
-      cleanupActive();
-      setLoadingUI(false);
-
-      try{
-        if(!data || data.ok !== true){
-          throw new Error((data && data.error) ? data.error : "Resposta inválida do endpoint");
-        }
-
-        headers = (data.headers || []).map(h => String(h ?? "").trim());
-        rows = (data.rows || []).map(r => Array.isArray(r) ? r : []);
-
-        if(headers.length === 0){
-          throw new Error("Sem cabeçalho (headers) para exibir.");
-        }
-
-        page = 1;
-        q.value = "";
-        refreshView();
-      }catch(err){
-        setError(err.message || String(err));
-        console.error(err);
-      }
-    };
-
-    // script JSONP
-    const s = document.createElement("script");
-    const sep = WEB_APP_URL.includes("?") ? "&" : "?";
-    s.src = WEB_APP_URL + sep + "callback=" + encodeURIComponent(cbName) + "&t=" + Date.now();
-
-    s.onerror = () => {
-      if (token !== active.token) return;
-      cleanupActive();
-      setLoadingUI(false);
-
-      // tenta 1 retry automático (Apps Script às vezes demora)
-      if (attempt === 1) {
-        setLoading("Falhou, tentando novamente…");
-        setTimeout(() => load(2), 700);
-        return;
-      }
-
-      setError("Falha ao carregar o endpoint. Confirme que o Web App está 'Qualquer pessoa' e que o doGet suporta callback= (JSONP).");
-    };
-
-    document.body.appendChild(s);
-    active.scriptEl = s;
-
-    // timeout mais folgado (Apps Script pode ser lento)
-    active.timeout = setTimeout(() => {
-      if (token !== active.token) return;
-      cleanupActive();
-      setLoadingUI(false);
-
-      if (attempt === 1) {
-        setLoading("Demorou, tentando novamente…");
-        setTimeout(() => load(2), 700);
-        return;
-      }
-
-      setError("Tempo esgotado ao carregar o endpoint. Tente 'Recarregar'.");
-    }, 30000);
-  }
-
-  q.addEventListener("input", () => { page = 1; refreshView(); });
-  reloadBtn.addEventListener("click", () => load());
-  pageSizeSel.addEventListener("change", () => { page = 1; refreshView(); });
-  prevBtn.addEventListener("click", () => { page--; refreshView(); });
-  nextBtn.addEventListener("click", () => { page++; refreshView(); });
-
-  load();
+load();
 </script>
 </body>
 </html>
