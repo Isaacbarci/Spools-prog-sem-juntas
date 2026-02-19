@@ -89,8 +89,8 @@
   let filtered = [];
   let page = 1;
 
-  let lastScript = null;
-  let timeoutHandle = null;
+  // Controle de requisições (evita corrida/timeout falso)
+  let active = { scriptEl: null, timeout: null, cbName: null, token: 0 };
 
   function esc(s){
     return String(s ?? "")
@@ -98,6 +98,14 @@
       .replaceAll("<","&lt;")
       .replaceAll(">","&gt;")
       .replaceAll('"',"&quot;");
+  }
+
+  // Formata ISO (ex: 2025-09-15T03:00:00.000Z) -> dd/mm/aaaa
+  function fmtCell(v){
+    const s = String(v ?? "");
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    return s;
   }
 
   function setLoading(msg){
@@ -130,7 +138,7 @@
   function renderTable(dataRows){
     const thead = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>`;
     const tbody = `<tbody>${
-      dataRows.map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")
+      dataRows.map(r => `<tr>${r.map(v => `<td>${esc(fmtCell(v))}</td>`).join("")}</tr>`).join("")
     }</tbody>`;
     box.innerHTML = `<table>${thead}${tbody}</table>`;
   }
@@ -150,15 +158,44 @@
     nextBtn.disabled = (page >= pg.totalPages);
   }
 
-  function load(){
+  function cleanupActive(){
+    if (active.timeout) { clearTimeout(active.timeout); active.timeout = null; }
+    if (active.scriptEl) { try { active.scriptEl.remove(); } catch(e){} active.scriptEl = null; }
+    if (active.cbName && window[active.cbName]) {
+      try { delete window[active.cbName]; } catch(e) { window[active.cbName] = undefined; }
+    }
+    active.cbName = null;
+  }
+
+  function setLoadingUI(isLoading){
+    reloadBtn.disabled = isLoading;
+    q.disabled = isLoading;
+    pageSizeSel.disabled = isLoading;
+    prevBtn.disabled = isLoading || page <= 1;
+    nextBtn.disabled = isLoading;
+  }
+
+  function load(attempt = 1){
+    active.token++;
+    const token = active.token;
+
     setLoading("Buscando dados…");
+    setLoadingUI(true);
 
-    // remove script anterior
-    if (lastScript) { try { lastScript.remove(); } catch(e){} }
-    if (timeoutHandle) clearTimeout(timeoutHandle);
+    // cancela qualquer request anterior
+    cleanupActive();
 
-    // callback global
-    window.handleData = function(data){
+    // callback único por request (evita corrida)
+    const cbName = "handleData_" + Date.now() + "_" + Math.floor(Math.random()*1e6);
+    active.cbName = cbName;
+
+    window[cbName] = function(data){
+      // ignora callbacks antigos
+      if (token !== active.token) return;
+
+      cleanupActive();
+      setLoadingUI(false);
+
       try{
         if(!data || data.ok !== true){
           throw new Error((data && data.error) ? data.error : "Resposta inválida do endpoint");
@@ -180,24 +217,47 @@
       }
     };
 
+    // script JSONP
     const s = document.createElement("script");
     const sep = WEB_APP_URL.includes("?") ? "&" : "?";
-    s.src = WEB_APP_URL + sep + "callback=handleData&t=" + Date.now();
+    s.src = WEB_APP_URL + sep + "callback=" + encodeURIComponent(cbName) + "&t=" + Date.now();
 
     s.onerror = () => {
-      setError("Não foi possível carregar o endpoint. Verifique se o Web App está 'Qualquer pessoa' e se o doGet suporta callback= (JSONP).");
+      if (token !== active.token) return;
+      cleanupActive();
+      setLoadingUI(false);
+
+      // tenta 1 retry automático (Apps Script às vezes demora)
+      if (attempt === 1) {
+        setLoading("Falhou, tentando novamente…");
+        setTimeout(() => load(2), 700);
+        return;
+      }
+
+      setError("Falha ao carregar o endpoint. Confirme que o Web App está 'Qualquer pessoa' e que o doGet suporta callback= (JSONP).");
     };
 
     document.body.appendChild(s);
-    lastScript = s;
+    active.scriptEl = s;
 
-    timeoutHandle = setTimeout(() => {
-      setError("Tempo esgotado ao carregar o endpoint. Verifique a implantação do Apps Script.");
-    }, 15000);
+    // timeout mais folgado (Apps Script pode ser lento)
+    active.timeout = setTimeout(() => {
+      if (token !== active.token) return;
+      cleanupActive();
+      setLoadingUI(false);
+
+      if (attempt === 1) {
+        setLoading("Demorou, tentando novamente…");
+        setTimeout(() => load(2), 700);
+        return;
+      }
+
+      setError("Tempo esgotado ao carregar o endpoint. Tente 'Recarregar'.");
+    }, 30000);
   }
 
   q.addEventListener("input", () => { page = 1; refreshView(); });
-  reloadBtn.addEventListener("click", load);
+  reloadBtn.addEventListener("click", () => load());
   pageSizeSel.addEventListener("change", () => { page = 1; refreshView(); });
   prevBtn.addEventListener("click", () => { page--; refreshView(); });
   nextBtn.addEventListener("click", () => { page++; refreshView(); });
