@@ -63,8 +63,9 @@
   </div>
 
 <script>
-  // ✅ Endpoint do Web App (Apps Script)
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
+  // ✅ CORRIGIDO: chama o proxy do Vercel (mesma origem, sem CORS)
+  // Você precisa ter criado /api/spools no projeto (Next.js).
+  const WEB_APP_URL = "/api/spools";
 
   const box = document.getElementById("box");
   const meta = document.getElementById("meta");
@@ -95,12 +96,8 @@
     meta2.textContent = "";
   }
 
-  function setError(msg, rawText){
-    const extra = rawText ? `<div class="meta" style="margin-top:6px;max-width:1100px;white-space:normal">
-      Dica: se ao abrir o /exec no navegador aparecer uma página HTML (login/erro), o Web App não está público.<br>
-      Primeiros caracteres da resposta: <b>${esc(rawText.slice(0,200))}</b>
-    </div>` : "";
-    box.innerHTML = `<div class="error">Erro: ${esc(msg)}${extra}</div>`;
+  function setError(msg){
+    box.innerHTML = `<div class="error">Erro: ${esc(msg)}</div>`;
     meta.textContent = "";
     meta2.textContent = "";
   }
@@ -117,7 +114,7 @@
     page = Math.max(page, 1);
     const start = (page - 1) * size;
     const end = start + size;
-    return { slice: data.slice(start, end), total, totalPages, size };
+    return { slice: data.slice(start, end), total, totalPages };
   }
 
   function renderTable(dataRows){
@@ -130,18 +127,13 @@
 
   function refreshView(){
     const term = q.value.trim().toLowerCase();
-
-    if(!term){
-      filtered = rows.slice();
-    } else {
-      filtered = rows.filter(r => r.join(" ").toLowerCase().includes(term));
-    }
+    filtered = !term ? rows.slice() : rows.filter(r => r.join(" ").toLowerCase().includes(term));
 
     const pg = paginate(filtered);
     renderTable(pg.slice);
 
-    meta.textContent = `${pg.total} registros (${term ? "filtrados" : "total"})`;
-    meta2.textContent = `Mostrando ${pg.slice.length} nesta página • Página ${page} de ${pg.totalPages}`;
+    meta.textContent = `${pg.total} registros ${term ? "(filtrados)" : "(total)"}`;
+    meta2.textContent = `Página ${page} de ${pg.totalPages} • Nesta página: ${pg.slice.length}`;
 
     pageInfo.textContent = `Página ${page} / ${pg.totalPages}`;
     prevBtn.disabled = (page <= 1);
@@ -152,14 +144,11 @@
     setLoading("Buscando dados…");
 
     try{
-      // evita cache
       const url = WEB_APP_URL + (WEB_APP_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
       const res = await fetch(url, { cache: "no-store" });
-      const text = await res.text();
+      if(!res.ok) throw new Error("HTTP " + res.status);
 
-      let data;
-      try { data = JSON.parse(text); }
-      catch { throw new Error("O endpoint não retornou JSON (veio HTML ou texto)."); }
+      const data = await res.json(); // agora vem JSON de verdade do proxy
 
       if(!data.ok) throw new Error(data.error || "Falha ao ler dados");
 
@@ -167,7 +156,7 @@
       rows = data.rows || [];
 
       if(headers.length === 0){
-        setError("Planilha sem cabeçalho.", "");
+        setError("Planilha sem cabeçalho.");
         return;
       }
 
@@ -175,15 +164,7 @@
       q.value = "";
       refreshView();
     }catch(err){
-      // tenta mostrar começo do retorno (ajuda a diagnosticar)
-      try{
-        const url = WEB_APP_URL + (WEB_APP_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
-        const res = await fetch(url, { cache: "no-store" });
-        const raw = await res.text();
-        setError(err.message || String(err), raw);
-      }catch{
-        setError(err.message || String(err), "");
-      }
+      setError(err.message || String(err));
       console.error(err);
     }
   }
