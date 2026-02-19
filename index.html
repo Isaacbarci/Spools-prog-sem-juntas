@@ -1,15 +1,132 @@
-<script>
-  const WEB_APP_URL = "SUA_URL_DO_EXEC_AQUI";
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spools prog sem juntas</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f6f7f9}
+    .wrap{max-width:1200px;margin:16px auto;background:#fff;border-radius:12px;padding:14px;box-shadow:0 6px 22px rgba(0,0,0,.08)}
+    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    h2{margin:0;font-size:18px}
+    .meta{color:#667085;font-size:12px;margin-top:4px}
+    input{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;min-width:260px}
+    .btn{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;cursor:pointer}
+    .tableWrap{margin-top:12px;overflow:auto;border:1px solid #eaecf0;border-radius:12px}
+    table{border-collapse:collapse;width:100%;min-width:900px}
+    thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid #eaecf0;z-index:1}
+    th,td{padding:10px 12px;border-bottom:1px solid #f0f2f5;text-align:left;white-space:nowrap}
+    tr:hover td{background:#fcfcfd}
+    .loading{padding:14px;color:#475467}
+    .error{padding:14px;color:#b42318}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h2>Spools prog sem juntas</h2>
+        <div class="meta" id="meta">Carregando…</div>
+      </div>
 
-  function handleData(data){
-    console.log(data); // aqui você segue com renderização da tabela
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="q" placeholder="Filtrar (SERVIÇO, PROG FAB, MATERIAL...)" />
+        <button class="btn" id="reload">Recarregar</button>
+      </div>
+    </div>
+
+    <div class="tableWrap" id="box">
+      <div class="loading">Buscando dados…</div>
+    </div>
+  </div>
+
+<script>
+  // ✅ Seu Web App (Apps Script)
+  // IMPORTANTE: o Apps Script precisa ter doGet() e suportar JSONP (?callback=...)
+  const WEB_APP_URL =
+    "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
+
+  const box = document.getElementById("box");
+  const meta = document.getElementById("meta");
+  const q = document.getElementById("q");
+  const reloadBtn = document.getElementById("reload");
+
+  let headers = [];
+  let rows = [];
+
+  function esc(s){
+    return String(s ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;");
   }
+
+  function renderTable(dataRows){
+    const thead = `<thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>`;
+    const tbody = `<tbody>${
+      dataRows.map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")
+    }</tbody>`;
+    box.innerHTML = `<table>${thead}${tbody}</table>`;
+    meta.textContent = `${dataRows.length} linhas exibidas • ${rows.length} total`;
+  }
+
+  function applyFilter(){
+    const term = q.value.trim().toLowerCase();
+    if(!term){
+      renderTable(rows);
+      return;
+    }
+    const filtered = rows.filter(r => r.join(" ").toLowerCase().includes(term));
+    renderTable(filtered);
+  }
+
+  // ---------- JSONP ----------
+  let lastScript = null;
 
   function load(){
+    box.innerHTML = `<div class="loading">Buscando dados…</div>`;
+    meta.textContent = "Carregando…";
+
+    // remove script anterior
+    if (lastScript) lastScript.remove();
+
+    // callback global
+    window.handleData = function(data){
+      try{
+        if(!data || !data.ok) throw new Error((data && data.error) || "Falha ao carregar");
+
+        headers = data.headers || [];
+        rows = data.rows || [];
+
+        if(headers.length === 0){
+          box.innerHTML = `<div class="error">Sem cabeçalho para exibir.</div>`;
+          meta.textContent = "";
+          return;
+        }
+
+        q.value = "";
+        renderTable(rows);
+      }catch(err){
+        box.innerHTML = `<div class="error">Erro: ${esc(err.message || err)}</div>`;
+        meta.textContent = "";
+      }
+    };
+
     const s = document.createElement("script");
-    s.src = WEB_APP_URL + "?callback=handleData&t=" + Date.now();
+    s.src = WEB_APP_URL + (WEB_APP_URL.includes("?") ? "&" : "?") + "callback=handleData&t=" + Date.now();
+    s.onerror = () => {
+      box.innerHTML = `<div class="error">Erro: não foi possível carregar o endpoint (verifique se o Apps Script aceita callback=...)</div>`;
+      meta.textContent = "";
+    };
     document.body.appendChild(s);
+    lastScript = s;
   }
+
+  q.addEventListener("input", applyFilter);
+  reloadBtn.addEventListener("click", load);
 
   load();
 </script>
+</body>
+</html>
