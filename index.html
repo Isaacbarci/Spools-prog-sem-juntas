@@ -24,7 +24,7 @@
     .pager{display:flex;gap:8px;align-items:center}
     select{padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff}
     .muted{color:#98a2b3}
-    .pill{display:inline-block;padding:2px 8px;border:1px solid #eaecf0;border-radius:999px;font-size:12px;color:#667085}
+    .pill{display:inline-block;padding:2px 8px;border:1px solid #eaecf0;border-radius:999px;font-size:12px;color:#667085;max-width:100%;overflow:hidden;text-overflow:ellipsis}
   </style>
 </head>
 <body>
@@ -69,8 +69,7 @@
   </div>
 
 <script>
-  // ✅ COLE AQUI a URL /exec do seu Apps Script (a mais recente do Deploy)
-  // Exemplo: https://script.google.com/macros/s/XXXXX/exec
+  // ✅ URL do seu Web App (Apps Script) - JSONP (callback=)
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxG6NDIbCDCqvYiESiBgdME7cOITYIdVx2wcNZF3Vd6ebhqBYhonZy4c-aFmpFX8zLdqA/exec";
 
   const box = document.getElementById("box");
@@ -154,9 +153,11 @@
   function load(){
     setLoading("Buscando dados…");
 
+    // remove script anterior
     if (lastScript) { try { lastScript.remove(); } catch(e){} }
     if (timeoutHandle) clearTimeout(timeoutHandle);
 
+    // callback global
     window.handleData = function(data){
       try{
         if(!data || data.ok !== true){
